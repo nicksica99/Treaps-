@@ -1,0 +1,378 @@
+// CMSC 341 - Fall 2019 - Project 3
+// File: treap.cpp
+// NAME: Nick Sica
+// EMAIL: nsica1@umbc.edu
+
+
+using namespace std ;
+
+#include "treap.h"
+
+Treap::Treap() {
+  _nptr = nullptr ;
+}
+/*******************************
+//Function: Treap copy constructor
+// copy constructor of the treap
+*******************************/
+Treap::Treap(const Treap& other) {
+  //
+  // Implement copy constructor
+  //
+  TreapNode *temp = other._nptr;
+  //if other is empty 
+  if(other._nptr == nullptr) {
+
+    _nptr = nullptr;
+      }
+  else {
+    //calls copy constructor helper function
+    this->_nptr = copyHelper(temp);
+  }
+}
+
+/**************
+//FUNCTION: Treap destructor
+//destructor of the treap
+**************/
+Treap::~Treap() {
+  //
+  // Implement destructor
+  //
+  //deletes the treap
+  delete _nptr;
+  
+  _nptr = nullptr;
+
+}
+/**********************************************
+//FUNCTION: Treap overloaded assignment operator
+// copies the treap and deletes the current object
+**********************************************/
+const Treap& Treap::operator=(const Treap& rhs) {
+  //
+  // Implement assignment operator
+  //
+  //deletes the current treap
+  if(this != &rhs) {
+    delete _nptr;
+    _nptr = nullptr;
+    //assigns a new node and uses copy helper to copy the new treap
+    TreapNode *temp = rhs._nptr;
+    this->_nptr = copyHelper(temp);
+  }
+  return *this;
+  
+  
+}
+/********************************************
+//FUNCTION: copyHelper
+// helper function used to recursively copy 
+// the treap objects 
+********************************************/
+TreapNode* Treap::copyHelper(TreapNode *Root) {
+  if(Root == nullptr) {
+    return nullptr;
+			 
+  }
+  //new node
+  TreapNode *temp = new TreapNode;
+  //assigns all the data necessarry 
+  temp->_data = Root->_data;
+  temp->_pri = Root->_pri;
+  temp->_height = Root->_height;
+  
+  //recursively copies all of the left and right subtreaps
+  temp->_left._nptr = copyHelper(Root->_left._nptr);
+  temp->_right._nptr = copyHelper(Root->_right._nptr);
+
+  return temp;
+}
+
+   
+
+// Return -1 if the treap is empty; otherwise, return value in _height.
+int Treap::height() const {
+  return _nptr ? _nptr->_height : -1 ;
+}
+
+// Return the priority of the root node of a Treap.
+// Note: numeric_limits<priority_t>::min() returns the minimum value
+// of the priority type.  We will only use int priorities, so this is
+// the minimum integer value.
+priority_t Treap::priority() const {
+  return _nptr ? _nptr->_pri : numeric_limits<priority_t>::min() ;
+}
+
+/*****************************************
+//FUNCTION: find
+// basic find function, finds data values in 
+// the treap recursively 
+*****************************************/
+const data_t* Treap::find(const data_t& x) {
+  //
+  // Implement find function
+  //
+  //if the treap is empty 
+  if(_nptr == nullptr) {
+    return nullptr;
+  }
+  //if the data matches the key then return the pointer to the data 
+  if(_nptr->_data == x) {
+    return &_nptr->_data;
+  
+    }
+  //if the node's data is larger than the key then go left 
+  if(_nptr->_data > x) {
+    return _nptr->_left.find(x);
+  }
+
+  //go right 
+  else if(_nptr->_data < x) {
+    return _nptr->_right.find(x);
+  }
+  //return 
+  return nullptr;
+  
+}
+
+// Inorder traversal.  Recommend you NOT change this!!!
+void Treap::inorder() {
+
+  if ( empty() ) return ;
+
+  cout << "(" ;
+  _nptr->_left.inorder() ;
+
+  cout << _nptr->_data << ":" << priority() << ":" << height() ;
+
+  _nptr->_right.inorder() ;
+  cout << ")" ;
+
+  return  ;
+}
+
+// Used for debugging and grading.  Interprets the characters in
+// position[] as directions in the tree.  E.g., "RLR" means, "starting
+// from root, go right, then left, then right."  If position[] is an
+// empty string, then it just locats the value a the root.
+// See project description for details.
+bool Treap::locate (const char position[], data_t& x, priority_t& p, int& h, int offset) {
+
+  if (_nptr == nullptr) return false ;
+
+  if (position[offset] == '\0') {
+    x = _nptr->_data ;
+    p = _nptr->_pri ;
+    h = _nptr->_height ;
+    return true ;
+  }
+
+  if (position[offset] == 'L') {
+    return _nptr->_left.locate(position, x, p, h, offset+1) ;
+  }
+
+  if (position[offset] == 'R') {
+    return _nptr->_right.locate(position, x, p, h, offset+1) ;
+  }
+
+  cerr << "Bad position character!\n" ;
+  exit(17) ;
+
+  return false ; 
+}
+
+
+// Basic BST insertion.  Does not allow duplicate values.
+//
+// Complete this function to do Treap insertion.
+//
+void Treap::insert(const data_t& x, const priority_t& p) {
+  //check if treap is empty
+  if ( empty() ) {
+    _nptr = new TreapNode(x, p) ;
+  }
+  //if the node's data is less than the inserting data then go right
+  if (_nptr->_data < x) { 
+    _nptr->_right.insert(x, p) ;
+    //checks priority to see if it needs to rotate left or not
+    if(_nptr->_right._nptr->_pri > _nptr->_pri) {
+      rotateLeft();
+    }
+    
+  }
+  //otherwise insert left
+  else if (x < _nptr->_data ) {
+    _nptr->_left.insert(x, p) ;
+    //checks priority to see if it needs to rotate right or not
+    if(_nptr->_left._nptr->_pri > _nptr->_pri) {
+      rotateRight();
+    }
+    
+
+  }
+  //made Prof Marron's code that was here and put it into a helper function
+  //updates the height correctly 
+  updateHeight();
+  
+
+}
+/**************************
+//FUNCTION: updateHeight
+//helper function that updates the height
+//just marron's code moved into a helper
+*************************/
+void Treap::updateHeight() {
+  //gets left and right heights and calculates the current nodes height
+  int leftHeight = _nptr->_left.height();
+  int rightHeight = _nptr->_right.height();
+  _nptr->_height = 1 + ( leftHeight > rightHeight ? leftHeight : rightHeight );
+
+
+}
+/***********************
+//FUNCTION: rotateLeft
+// rotates the nodes left
+// to keep max-heap priority
+***********************/
+void Treap::rotateLeft() {
+  //gets the right node and the right's left node
+  TreapNode *temp = _nptr->_right._nptr;
+  TreapNode *rotate = _nptr->_right._nptr->_left._nptr;
+  //sets temp's left as _nptr
+  temp->_left._nptr = _nptr;
+  //then sets _nptr's right treap to rotate
+  _nptr->_right._nptr = rotate;
+  //then sets _nptr equal to temp
+  _nptr = temp;
+  //updates heights of the left children 
+  _nptr->_left.updateHeight();
+  
+  
+}
+/***********************
+//FUNCTION: rotateRight
+// rotates the nodes right
+// to keep max-heap priority
+***********************/
+void Treap::rotateRight() {
+  //gets the left node and the lefts right node
+  TreapNode *temp = _nptr->_left._nptr;
+  TreapNode *rotate = _nptr->_left._nptr->_right._nptr;
+  //sets temp's right as _nptr
+  temp->_right._nptr = _nptr;
+  //then sets _nptr's left treap to rotate
+  _nptr->_left._nptr = rotate;
+  //then sets _nptr equal to temp 
+  _nptr = temp;
+  //updates heights of the right children
+  _nptr->_right.updateHeight();
+  
+}
+/**********************************
+//FUNCTION: remove
+//removes a node recursively based
+// on the data value given
+*********************************/
+bool Treap::remove(const data_t& x) {
+  //
+  // Implement treap element removal
+  //
+  //if empty returns false    
+  if(empty() ) {
+    return false;
+  }
+  //if the data is less than x then it searches to the right
+  if(_nptr->_data < x) {
+    
+    _nptr->_right.remove(x);
+    updateHeight();
+  }
+  //if the data is greater than x then it searches to the left
+  else if(_nptr->_data > x) {
+    
+    _nptr->_left.remove(x);
+    updateHeight();
+  }
+  //if the data has been found
+  if(_nptr->_data == x) {
+    //if the treapNode is a leaf of the tree, then it can just delete it
+      if(_nptr->_right._nptr == nullptr && _nptr->_left._nptr == nullptr) {
+	delete _nptr;
+      
+	_nptr = nullptr;
+	return true;
+      
+      }
+      //if there is two children then it must rotate left or right based on the priority 
+      else if(_nptr->_right._nptr != nullptr && _nptr->_left._nptr != nullptr) {
+	if(_nptr->_left._nptr->_pri < _nptr->_right._nptr->_pri) {
+	  rotateLeft();
+	  //then it recursively calls remove again to try to get it to a leaf
+	  _nptr->_left.remove(x);
+	}
+	else {
+	  rotateRight();
+	  //recursive call to get back to the correct node
+	  _nptr->_right.remove(x);
+	}
+      }
+      //if the node has only one child 
+      else {
+	//if there is a left child then rotate right and call remove again to see if it is a leaf
+	if(_nptr->_left._nptr != nullptr) {
+	  rotateRight();
+	  _nptr->_right.remove(x);
+	}
+	//else then rotate it left and call remove again to see if it is a leaf
+	else {
+	  rotateLeft();
+	  _nptr->_left.remove(x);
+	}
+      }
+  }
+  //update the height
+  updateHeight();
+  return false;
+  
+}
+  
+
+
+// Treap::dump() just calls TreapNode::dump()
+void Treap::dump() {
+  if ( !empty() ) _nptr->dump() ;
+}
+
+ostream& operator<< (ostream& os, const Treap& T) {
+  os << T._nptr ; 
+  return os ;
+}
+
+
+TreapNode::TreapNode() : _height(0) {
+  // Empty constructor body
+}
+
+TreapNode::TreapNode(const data_t& x, const priority_t& p) 
+  : _data(x), _pri(p), _height(0) { 
+  // Empty constructor body
+}
+
+TreapNode::~TreapNode() {
+  // Empty destructor
+  // Retained for debugging
+}
+
+// Dump the contents of a node
+void TreapNode::dump() {
+  cout << "===== TreapNode::dump()\n" ;
+  cout << "      this = " << this << endl ; 
+  cout << "      left = " << _left << endl ; 
+  cout << "      right= " << _right << endl ; 
+  cout << "      data = " << _data << endl ;
+  cout << "      height = " << _height << endl ;
+  _left.dump() ;
+  _right.dump() ;
+}
+
